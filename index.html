@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pathfinding Visualizer — Teoria dos Grafos & Menor Caminho</title>
+  <meta name="description" content="Simulador interativo de algoritmos de busca em grafos e menor caminho (Dijkstra, A*, BFS, DFS) com geração de labirintos e análise de complexidade.">
+  <meta name="theme-color" content="#080c14">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-wrapper">
+
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">🧭</div>
+        <div class="brand-text">
+          <h1>PathFinder Lab</h1>
+          <span class="brand-badge">Teoria dos Grafos • Menor Caminho</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-sound" class="btn-tool" title="Alternar Efeitos Sonoros Frequenciais">
+          <span id="sound-icon">🔊</span> Som
+        </button>
+        <button id="btn-guide" class="btn-tool" title="Guia Teórico de Grafos">
+          📘 Teoria dos Grafos
+        </button>
+        <a href="https://github.com/VeronicaSkye/pathfinding-visualizer" target="_blank" rel="noopener noreferrer" class="btn-tool btn-github">
+          🐙 GitHub
+        </a>
+      </div>
+    </header>
+
+    <!-- Toolbar de Controles & Algoritmos -->
+    <section class="toolbar">
+      <div class="toolbar-group">
+        <div class="select-field">
+          <label for="algo-select">Algoritmo:</label>
+          <select id="algo-select" class="ctrl-select">
+            <option value="astar">A* Search (Heurística Inteligente)</option>
+            <option value="dijkstra">Dijkstra (O Pai do Menor Caminho)</option>
+            <option value="bfs">Breadth-First Search (Busca em Largura)</option>
+            <option value="dfs">Depth-First Search (Busca em Profundidade)</option>
+          </select>
+        </div>
+
+        <div class="select-field">
+          <label for="maze-select">Labirinto:</label>
+          <select id="maze-select" class="ctrl-select">
+            <option value="" disabled selected>Gerar Labirinto...</option>
+            <option value="recursive">Divisão Recursiva (Câmara)</option>
+            <option value="random">Paredes Aleatórias (30%)</option>
+            <option value="stair">Escada Diagonal</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="toolbar-group tools-selection">
+        <span class="toolbar-label">Pincel:</span>
+        <button class="btn-mode active" data-mode="wall" title="Desenhar Paredes (Bloqueios intransitáveis)">
+          🧱 Parede
+        </button>
+        <button class="btn-mode" data-mode="weight" title="Inserir Pesos (Custo 5x para atravessar)">
+          🏋️ Peso (+5)
+        </button>
+        <button class="btn-mode" data-mode="erase" title="Borracha para remover paredes ou pesos">
+          🧹 Borracha
+        </button>
+      </div>
+
+      <div class="toolbar-group actions-group">
+        <button id="btn-run" class="btn-action btn-visualize">
+          ▶ Visualizar
+        </button>
+        <button id="btn-clear-path" class="btn-action btn-secondary" title="Limpar apenas o caminho e manter paredes">
+          Limpar Caminho
+        </button>
+        <button id="btn-clear-all" class="btn-action btn-danger" title="Limpar todo o tabuleiro">
+          Resetar Grid
+        </button>
+      </div>
+    </section>
+
+    <!-- Barra de Legenda e Métricas em Tempo Real -->
+    <section class="metrics-legend-bar">
+      <div class="legend-list">
+        <div class="legend-chip"><span class="chip-icon start-icon">🚀</span> Início</div>
+        <div class="legend-chip"><span class="chip-icon target-icon">🎯</span> Destino</div>
+        <div class="legend-chip"><span class="chip-box cell-unvisited"></span> Não Visitado</div>
+        <div class="legend-chip"><span class="chip-box cell-visited"></span> Visitado</div>
+        <div class="legend-chip"><span class="chip-box cell-path"></span> Menor Caminho</div>
+        <div class="legend-chip"><span class="chip-box cell-wall"></span> Parede</div>
+        <div class="legend-chip"><span class="chip-box cell-weight"></span> Peso (+5)</div>
+      </div>
+
+      <div class="live-metrics">
+        <div class="metric-tag">
+          <span class="lbl">Nós Visitados:</span>
+          <strong id="metric-visited">0</strong>
+        </div>
+        <div class="metric-tag">
+          <span class="lbl">Comprimento:</span>
+          <strong id="metric-length">0</strong>
+        </div>
+        <div class="metric-tag">
+          <span class="lbl">Custo Total:</span>
+          <strong id="metric-cost">0</strong>
+        </div>
+        <div class="metric-tag">
+          <span class="lbl">Tempo:</span>
+          <strong id="metric-time">0 ms</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Grade Interativa de Grafo (Grid Board) -->
+    <main class="grid-container">
+      <div class="grid-board" id="grid-board">
+        <!-- Células geradas via JavaScript -->
+      </div>
+    </main>
+
+    <!-- Painel de Informação Técnica do Algoritmo Ativo -->
+    <footer class="algo-info-panel">
+      <div class="info-card">
+        <div class="info-header">
+          <h3 id="info-title">A* Search (A-Estrela)</h3>
+          <span class="guarantee-badge yes" id="info-guarantee">✓ Garante Menor Caminho</span>
+        </div>
+        <p id="info-desc">
+          Utiliza uma função de custo heurística <strong>f(n) = g(n) + h(n)</strong>, onde <em>g(n)</em> é a distância percorrida do início até o nó atual e <em>h(n)</em> é a estimativa de distância até o destino (Manhattan Distance). É amplamente utilizado na indústria de jogos e GPS pela sua rapidez e precisão.
+        </p>
+        <div class="info-stats">
+          <div class="stat-pill">
+            <span class="stat-k">Complexidade de Tempo:</span>
+            <strong id="info-time-comp">O(E log V)</strong>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-k">Complexidade de Espaço:</span>
+            <strong id="info-space-comp">O(V)</strong>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-k">Suporta Pesos:</span>
+            <strong id="info-weights">Sim (ponderado)</strong>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Modal de Teoria dos Grafos & Engenharia de Software -->
+    <div class="modal-overlay" id="guide-modal" style="display: none;">
+      <div class="modal-box">
+        <div class="modal-head">
+          <h2>Teoria dos Grafos & Engenharia de Software</h2>
+          <button class="modal-close" id="btn-close-guide">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="guide-item">
+            <h3>🌐 Por que Grafos são fundamentais na computação?</h3>
+            <p>
+              Praticamente tudo em sistemas reais é modelado como um grafo: redes sociais (pessoas são nós, amizades são arestas), roteamento de pacotes na Internet (TCP/IP), mapas como Google Maps (cruzamentos são vértices, ruas são arestas com pesos de trânsito) e dependências de pacotes no npm/Docker.
+            </p>
+          </div>
+
+          <div class="guide-item">
+            <h3>⚡ Comparativo dos 4 Algoritmos</h3>
+            <div class="table-wrap">
+              <table class="guide-table">
+                <thead>
+                  <tr>
+                    <th>Algoritmo</th>
+                    <th>Tipo</th>
+                    <th>Estrutura de Dados</th>
+                    <th>Garante Menor Caminho?</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Dijkstra</strong></td>
+                    <td>Gulosa / Relaxamento</td>
+                    <td>Min-Heap / Fila de Prioridade</td>
+                    <td><span class="badge-yes">Sim</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>A* Search</strong></td>
+                    <td>Heurística Informada</td>
+                    <td>Min-Heap com f(n) = g + h</td>
+                    <td><span class="badge-yes">Sim</span> (se admissível)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>BFS</strong></td>
+                    <td>Exploração por Níveis</td>
+                    <td>Fila FIFO (Queue)</td>
+                    <td><span class="badge-yes">Sim</span> (grafos não ponderados)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>DFS</strong></td>
+                    <td>Exploração em Profundidade</td>
+                    <td>Pilha LIFO / Recursão</td>
+                    <td><span class="badge-no">Não</span> (apenas encontra um caminho)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="guide-item">
+            <h3>💡 Dica para Entrevistas de Engenharia:</h3>
+            <p>
+              Ao resolver problemas do LeetCode ou testes técnicos, lembre-se: se o problema envolve <em>"o menor número de passos"</em> em uma matriz sem custos diferentes, <strong>BFS</strong> costuma ser a solução ideal. Se envolver custos variados ou terrenos, use <strong>Dijkstra</strong> ou <strong>A*</strong>.
+            </p>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-action btn-visualize" id="btn-understood-guide">Fechar e Praticar</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
